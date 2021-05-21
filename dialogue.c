@@ -14,8 +14,10 @@ void dialogue(){
                "Введите 3, чтобы добавить путь.\n"
                "Введите 4, чтобы удалить вершину.\n"
                "Введите 5, чтобы удалить путь.\n"
+               "Введите 6, чтобы найти путь ИЗ В.\n"
                "Введите 0, чтобы выйти из программы.\n");
         Head* head;
+        HeadMassive* tree;
         int finX, finY, m;
         choose = getInt();
         switch(choose){
@@ -64,6 +66,26 @@ void dialogue(){
                 printf("Введите конечный y: ");
                 finY = getInt();
                 deleteWay(graph, x, y, finX, finY);
+                break;
+            case 6:
+                printf("Введите начальный x: ");
+                x = getInt();
+                printf("Введите начальный y: ");
+                y = getInt();
+                printf("Введите конечный x: ");
+                finX = getInt();
+                printf("Введите конечный y: ");
+                finY = getInt();
+                tree = findFrom(graph, x, y, finX, finY);
+                printf("\n");
+                printWay(tree);
+                printf("Конец пути!\n");
+                if(tree != NULL) {
+                    while (tree->prev != NULL) {
+                        tree = tree->prev;
+                    }
+                    freeTree(tree);
+                }
                 break;
             default:
                 break;

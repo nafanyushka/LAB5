@@ -35,6 +35,7 @@ Head* headInit(int x, int y, char* name){
     head->y = y;
     head->name = name;
     head->ways = NULL;
+    head->color = 'W';
     return head;
 }
 
@@ -171,7 +172,8 @@ void printGraph(Graph* graph){
     Head** printer = graph->heads;
     printf("\nГРАФ:\n");
     for(int i = 0; i < graph->nsize; i++){
-        printf("\tГраф Снюсов. {%d, %d}\t \"%s\":\t Пути в:", (*printer)->x, (*printer)->y, (*printer)->name);
+        printf("\tГраф Снюсов. {%d, %d}\t \"%s\", цвет: \'%c\':\t Пути в:", (*printer)->x, (*printer)->y,
+               (*printer)->name, (*printer)->color);
         Node* printWay = (*printer)->ways;
         while(printWay != NULL){
             printf(" {%d, %d}", printWay->way->to->x, printWay->way->to->y);
@@ -184,11 +186,122 @@ void printGraph(Graph* graph){
 }
 
 void freeGraph(Graph* graph){
+    Head** deleter = graph->heads;
+    for(int i = 0; i < graph->nsize; i++){
+        freeHead(*deleter);
+        deleter++;
+    }
+}
+
+
+
+HeadMassive* initHeadM(Head* head, int h){
+    HeadMassive* hm;
+    hm = (HeadMassive*)malloc(sizeof(HeadMassive));
+    hm->h = h;
+    hm->head = head;
+    hm->heads = NULL;
+    hm->massSize = 0;
+    hm->prev = NULL;
+    return hm;
+}
+
+void addArray(DynArray* array, HeadMassive* head);
+
+int fillMass(HeadMassive* d, HeadMassive*** massive, DynArray* stack, Node* node, int i, int h){
+    if(node == NULL) {
+        (*massive) = (HeadMassive**)malloc(sizeof(Head*) * i);
+        return 0;
+    }
+    if(node->way->to->color == 'W'){
+        int k = fillMass(d, massive, stack, node->next, i + 1, h);
+        node->way->to->color = 'G';
+        (*massive)[i] = initHeadM(node->way->to, d->h + 1);
+        (*massive)[i]->prev = d;
+        addArray(stack, (*massive)[i]);
+        return k + 1;
+    }
+    else{
+        return fillMass(d, massive, stack, node->next, i, h);
+    }
 
 }
 
-Head* findFrom(Graph* graph, int startX, int startY, int finX, int finY){
+DynArray* initArray(){
+    DynArray* array = (DynArray*)malloc(sizeof(struct DynArray));
+    array->heads = (HeadMassive**)malloc(10 * sizeof(HeadMassive*));
+    array->nsize = 0;
+    array->size = 10;
+    return array;
+}
 
+void addArray(DynArray* array, HeadMassive* head){
+    if(array->nsize == array->size){
+        array->heads = (HeadMassive**)realloc(array->heads, (10 + array->size) * sizeof(HeadMassive*));
+        array->size += 10;
+    }
+    array->heads[array->nsize] = head;
+    array->nsize += 1;
+}
+
+void freeTree(HeadMassive* root){
+    for(int i = 0; i < root->massSize; i++){
+        freeTree(root->heads[i]);
+    }
+    root->head->color = 'W';
+    free(root->heads);
+    free(root);
+}
+
+HeadMassive* findFrom(Graph* graph, int startX, int startY, int finX, int finY){
+    int i;
+    DynArray* stack = initArray();
+    HeadMassive* start = NULL;
+    Head** finder = graph->heads;
+    HeadMassive* root = NULL;
+    int k = 0;
+    for(i = 0; i < graph->nsize; i++){
+        if((*finder)->x == startX && (*finder)->y == startY){
+            root = initHeadM(*finder, 0);
+            addArray(stack, root);
+            k = fillMass(root, &root->heads, stack, root->head->ways, 0, 0);
+            root->massSize = k;
+            root->head->color = 'B';
+            break;
+        }
+        if(i + 1 == graph->nsize) {
+            free(stack);
+            return NULL;
+        }
+        finder++;
+    }
+    i = 1;
+    HeadMassive** find = (stack->heads) + i;
+    while(i != stack->nsize){
+        if((*find)->head->x == finX && (*find)->head->y == finY)
+            start = (*find);
+        (*find)->massSize = fillMass(*find, &(*find)->heads, stack, (*find)->head->ways, 0, 0);
+        (*find)->head->color = 'B';
+        find++;
+        i++;
+    }
+    if(start == NULL){
+        for(int j = 0; j < stack->nsize; j++){
+            stack->heads[j]->head->color = 'W';
+            free(stack->heads[j]->heads);
+            free(stack->heads[j]);
+        }
+    }
+    free(stack->heads);
+    free(stack);
+   return start;
+}
+
+void printWay(HeadMassive* from){
+    if(from == NULL)
+        return;
+    printWay(from->prev);
+    printf("{%d, %d} -> ", from->head->x, from->head->y);
 }
 
 Way** findWay(Graph* graph, int startX, int startY, int finX, int finY){
