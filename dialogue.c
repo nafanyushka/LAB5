@@ -7,6 +7,12 @@
 void dialogue(){
     Graph* graph = graphInit();
     int x, y, choose;
+    printf("Если хотите сгенерировать граф, введите число вершин, либо 0 и меньше, если нет.\n");
+    choose = getInt();
+    if(choose > 0){
+        printf("Генерация графа.\n");
+        randomGenerate(graph, choose);
+    }
     char* name;
     do{
         printf("Введите 1, чтобы вывести граф.\n"

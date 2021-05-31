@@ -16,11 +16,14 @@ typedef struct Head Head;
 typedef struct Way Way;
 typedef struct Node Node;
 typedef struct Graph Graph;
+typedef struct From From;
 
 
 ///////////////////////////////////////
 typedef struct HeadMassive HeadMassive;
 typedef struct DynArray DynArray;
+typedef struct Heads Heads;
+typedef struct GraphMassive GraphMassive;
 
 struct HeadMassive{
     int h;
@@ -55,11 +58,20 @@ struct Way{
 
 struct Head{
     Node* ways;
+    From* from;
     int x;
     int y;
     char* name;
     char color;
 };
+
+struct From{
+    Head* head;
+    From* next;
+};
+
+void addFrom(Head* from, Head* to);
+void removeFrom(From** from, int x, int y);
 
 Head* headInit(int x, int y, char* name);
 Graph* graphInit();
@@ -73,6 +85,7 @@ HeadMassive* findFrom(Graph* graph, int startX, int startY, int finX, int finY);
 void printWay(HeadMassive* from);
 void freeTree(HeadMassive* root);
 Way** findWay(Graph* graph, int startX, int startY, int finX, int finY);
-Graph** graphs(Graph* graph);
+Heads* graphs(Graph* graph);
+void randomGenerate(Graph* graph, int size);
 
 #endif //LAB5_GRAPH_H

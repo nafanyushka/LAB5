@@ -3,6 +3,7 @@
 //
 
 #include "graph.h"
+#include "graphMassive.h"
 
 void freeWay(Way* way){
     if(way == NULL)
@@ -21,10 +22,21 @@ void freeNode(Node* node){
     }
 }
 
+void freeFrom(From* from){
+    if(from == NULL)
+        return;
+    while(from != NULL){
+        From* cleaner = from;
+        from = from->next;
+        free(cleaner);
+    }
+}
+
 void freeHead(Head* head){
     if(head == NULL)
         return;
     freeNode(head->ways);
+    freeFrom(head->from);
     free(head->name);
     free(head);
 }
@@ -35,6 +47,7 @@ Head* headInit(int x, int y, char* name){
     head->y = y;
     head->name = name;
     head->ways = NULL;
+    head->from = NULL;
     head->color = 'W';
     return head;
 }
@@ -96,6 +109,7 @@ int addWay(Graph* graph, int startX, int startY, int finX, int finY, int m){
         node->way = way;
         way->to = to;
         way->m = m;
+        addFrom(from, to);
         return 1;
     }
     while(find != NULL){
@@ -112,6 +126,7 @@ int addWay(Graph* graph, int startX, int startY, int finX, int finY, int m){
     node->way = way;
     node->way->to = to;
     node->way->m = m;
+    addFrom(from, to);
     return 1;
 }
 
@@ -149,6 +164,7 @@ int deleteHead(Graph* graph, int x, int y){
             graph->nsize--;
             isDel = 1;
         }
+        removeFrom(&(*pointer)->from, x, y);
         deleteNode(&(*pointer)->ways, x, y);
         pointer++;
     }
@@ -159,13 +175,21 @@ int deleteHead(Graph* graph, int x, int y){
 
 int deleteWay(Graph* graph, int startX, int startY, int finX, int finY){
     Head** pointer = graph->heads;
+    int delT = 0;
+    int delF = 0;
     for(int i = 0; i < graph->nsize; i++){
         if((*pointer)->x == startX && (*pointer)->y == startY){
             deleteNode(&(*pointer)->ways, finX, finY);
-            return 1;
+            delT = 1;
         }
+        if((*pointer)->x == finX && (*pointer)->y == finY){
+            removeFrom(&(*pointer)->from, startX, startY);
+            delF = 1;
+        }
+        if(delF + delT > 1)
+            return 1;
     }
-    return 1;
+    return 0;
 }
 
 void printGraph(Graph* graph){
@@ -206,9 +230,9 @@ HeadMassive* initHeadM(Head* head, int h){
     return hm;
 }
 
-void addArray(DynArray* array, HeadMassive* head);
+void addArray(DynArray** array, HeadMassive* head);
 
-int fillMass(HeadMassive* d, HeadMassive*** massive, DynArray* stack, Node* node, int i, int h){
+int fillMass(HeadMassive* d, HeadMassive*** massive, DynArray** stack, Node* node, int i, int h){
     if(node == NULL) {
         (*massive) = (HeadMassive**)malloc(sizeof(Head*) * i);
         return 0;
@@ -235,13 +259,13 @@ DynArray* initArray(){
     return array;
 }
 
-void addArray(DynArray* array, HeadMassive* head){
-    if(array->nsize == array->size){
-        array->heads = (HeadMassive**)realloc(array->heads, (10 + array->size) * sizeof(HeadMassive*));
-        array->size += 10;
+void addArray(DynArray** array, HeadMassive* head){
+    if((*array)->nsize == (*array)->size){
+        (*array)->heads = (HeadMassive**)realloc((*array)->heads, (10 + (*array)->size) * sizeof(HeadMassive*));
+        (*array)->size += 10;
     }
-    array->heads[array->nsize] = head;
-    array->nsize += 1;
+    (*array)->heads[(*array)->nsize] = head;
+    (*array)->nsize += 1;
 }
 
 void freeTree(HeadMassive* root){
@@ -263,8 +287,8 @@ HeadMassive* findFrom(Graph* graph, int startX, int startY, int finX, int finY){
     for(i = 0; i < graph->nsize; i++){
         if((*finder)->x == startX && (*finder)->y == startY){
             root = initHeadM(*finder, 0);
-            addArray(stack, root);
-            k = fillMass(root, &root->heads, stack, root->head->ways, 0, 0);
+            addArray(&stack, root);
+            k = fillMass(root, &root->heads, &stack, root->head->ways, 0, 0);
             root->massSize = k;
             root->head->color = 'B';
             break;
@@ -280,7 +304,8 @@ HeadMassive* findFrom(Graph* graph, int startX, int startY, int finX, int finY){
     while(i != stack->nsize){
         if((*find)->head->x == finX && (*find)->head->y == finY)
             start = (*find);
-        (*find)->massSize = fillMass(*find, &(*find)->heads, stack, (*find)->head->ways, 0, 0);
+        (*find)->massSize = fillMass(*find, &(*find)->heads, &stack, (*find)->head->ways, 0, 0);
+        find = stack->heads + i;
         (*find)->head->color = 'B';
         find++;
         i++;
@@ -308,6 +333,70 @@ Way** findWay(Graph* graph, int startX, int startY, int finX, int finY){
 
 }
 
-Graph** graphs(Graph* graph){
+Heads* graphs(Graph* graph){
+/*     TODO:
+     *  Сделать структуру с массивом вершин.
+     *  Сделать структуру с массивом массивов вершин.
+     *  В 1 структуру пихнуть весь граф и по основному графу составлять массивчики с вершинами (R и Q)
+     *  Потом сравнивать 2 массива и генерировать новый с общими вершинами, по нему пройтись и из 1 массива со всеми
+     *  вершинами.
+     *  Вот так ходить пока в 1 массиве со всеми вершинами не останется ни одного элемента.
+                                          звучит просто, согласись                                                   */
+    Heads* allHeads = (Heads*)malloc(sizeof(Heads));
+    allHeads->heads = (Head**)malloc(sizeof(Head*) * graph->nsize);
+    allHeads->nsize = graph->nsize;
+    allHeads->maxsize = graph->nsize;
+    Head** pointer = graph->heads;
+    for(int i = 0; i < graph->nsize; i++){
+        allHeads->heads[i] = *pointer;
+        pointer++;
+    }
 
+    while(allHeads->nsize != 0){
+        Head* main
+    }
+}
+
+void randomGenerate(Graph* graph, int size){
+    graph->heads = realloc(graph->heads, size * sizeof(Head*) + 10);
+    graph->size = size + 10;
+    for(int i = 0; i < size; i++){
+        char* text = malloc(sizeof(char) * 2);
+        *text = 33 + rand() % 90;
+        *(text + 1) = '\0';
+        addHead(graph, headInit(i + 1, i + 1, text));
+    }
+    for(int i = 0; i < size * 2; i++){
+        int from = rand()%size + 1;
+        int to = rand()%size + 1;
+        if(from != to) {
+            addWay(graph, from, from, to, to, rand());
+        }
+    }
+}
+
+void addFrom(Head* from, Head* to){
+        From* f = (From*)malloc(sizeof(From));
+        f->next = to->from;
+        f->head = from;
+        to->from = f;
+}
+
+void removeFrom(From** from, int x, int y){
+    From* deleter = *from;
+    From* before = deleter;
+    while(deleter != NULL){
+        if(deleter->head->x == x && deleter->head->y == y){
+            if(deleter == before){
+                *from = deleter->next;
+                free(deleter);
+                return;
+            }
+            before->next = deleter->next;
+            free(deleter);
+            return;
+        }
+        before = deleter;
+        deleter = deleter->next;
+    }
 }
